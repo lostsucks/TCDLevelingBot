@@ -23,6 +23,7 @@ class Tools {
 
         // is in developer list
         this.isDev = function(user=int.user) {
+            console.log("Checking dev ID:", user?.id, config.developer_ids)
             return config.developer_ids.includes(user?.id)
         }
 
