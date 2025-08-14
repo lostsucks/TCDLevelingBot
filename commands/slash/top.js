@@ -53,7 +53,7 @@ async run(client, int, tools) {
     let xpEmbed = new PageEmbed(embed, rankings, {
         page: pageNumber, size: pageSize, owner: int.user.id,  ephemeral: isHidden,
         mapFunction: (x, y, p) => `**${p})** ${x.id == highlight ? "**" : ""}Lv. ${tools.getLevel(x.xp, db.settings)} - <@${x.id}> (${tools.commafy(x.xp)} XP)${x.id == highlight ? "**" : ""}`,
-        extraButtons: [ tools.button({style: "Link", label: "Online Leaderboard", url: lbLink}) ]
+        // extraButtons: [ tools.button({style: "Link", label: "Online Leaderboard", url: lbLink}) ]
     })
     if (!xpEmbed.data.length) return tools.warn("There are no members on this page!")
 
