@@ -789,7 +789,58 @@ app.get("/api/xp/:id", cors(), async function(req, res) {
     }
 })
 
+app.post("/api/giveXP", async function(req, res) {
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey !== process.env.XP_API_KEY) return res.apiError("Invalid API key!");
 
+    const { guildID, userID, amount } = req.body;
+    if (!guildID || !userID || typeof amount !== "number") return res.apiError("Missing parameters!");
+
+    let db = await client.db.fetch(guildID, [`settings`, `users.${userID}`]);
+    if (!db || !db.settings?.enabled) return res.apiError("XP is disabled or guild not found!");
+
+    // Add XP
+    let currentXP = db.users[userID]?.xp || 0;
+    let newXP = Math.max(0, currentXP + amount);
+
+    // Check for level up
+    let oldLevel = tools.getLevel(currentXP, db.settings);
+    let newLevel = tools.getLevel(newXP, db.settings);
+    let levelUp = newLevel > oldLevel;
+
+    // Save XP
+    await client.db.update(guildID, { $set: { [`users.${userID}.xp`]: newXP } }).exec();
+
+    // Handle level up message
+    if (levelUp && db.settings.levelUp.enabled && db.settings.levelUp.message) {
+        let useMultiple = (db.settings.levelUp.multiple > 1 && 
+            (db.settings.levelUp.multipleUntil == 0 || (newLevel < db.settings.levelUp.multipleUntil)));
+        
+        if (!useMultiple || (newLevel % db.settings.levelUp.multiple == 0)) {
+            // Get guild and member info for message
+            let guild = await client.guilds.fetch(guildID);
+            let member = await guild.members.fetch(userID);
+            
+            let messageData = {
+                author: member.user,
+                member: member,
+                guild: guild,
+                channel: guild.channels.cache.first() // or specific channel
+            };
+
+            let lvlMessage = new LevelUpMessage(db.settings, messageData, {
+                oldLevel: oldLevel,
+                level: newLevel,
+                userData: { xp: newXP }
+            });
+            
+            await lvlMessage.send();
+        }
+    }
+
+    console.log(`API Request: Give XP to ${userID} in ${guildID} - Amount: ${amount}`);
+    return res.send({ success: true, newXP, levelUp, oldLevel, newLevel });
+});
 
 // ========================================================================= \\
 // ======= WELCOME TO THE DISCORD AUTHORIZATION SECTION OF THE CODE! ======= \\
